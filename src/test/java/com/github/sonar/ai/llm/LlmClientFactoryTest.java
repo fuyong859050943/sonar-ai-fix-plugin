@@ -1,5 +1,5 @@
 /*
- * SonarQube AI Fix Plugin - Tests
+ * SonarQube AI Fix Plugin
  * Copyright (C) 2024
  */
 package com.github.sonar.ai.llm;
@@ -8,132 +8,145 @@ import com.github.sonar.ai.config.AiFixConfiguration;
 import com.github.sonar.ai.config.LlmProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.DisplayName;
 import org.sonar.api.config.Configuration;
-import org.sonar.api.config.internal.MapSettings;
 
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 /**
- * LLM 客户端工厂测试
+ * LlmClientFactory 单元测试
  */
 class LlmClientFactoryTest {
 
-    private MapSettings settings;
+    private Configuration configuration;
+    private AiFixConfiguration aiConfig;
+    private LlmClientFactory factory;
 
     @BeforeEach
     void setUp() {
-        settings = new MapSettings();
+        configuration = mock(Configuration.class);
+        aiConfig = mock(AiFixConfiguration.class);
+        factory = new LlmClientFactory(configuration, aiConfig);
     }
 
     @Test
-    @DisplayName("Should create OpenAI client when provider is OPENAI")
-    void shouldCreateOpenAIClient() {
-        // Given
-        settings.setProperty("sonar.ai.enabled", true);
-        settings.setProperty("sonar.ai.provider", "OPENAI");
-        settings.setProperty("sonar.ai.openai.api-key", "test-api-key");
-        
-        Configuration config = settings.asConfig();
-        AiFixConfiguration aiConfig = new AiFixConfiguration(config);
+    void testCreateClient_OpenAI() {
+        when(aiConfig.getProvider()).thenReturn(LlmProvider.OPENAI);
+        when(configuration.get("sonar.ai.openai.api-key")).thenReturn(Optional.of("sk-test-key"));
+        when(configuration.get("sonar.ai.openai.base-url")).thenReturn(Optional.empty());
+        when(configuration.get("sonar.ai.base-url")).thenReturn(Optional.empty());
+        when(aiConfig.getModel()).thenReturn("gpt-4");
+        when(aiConfig.getMaxTokens()).thenReturn(2000);
+        when(aiConfig.getTemperature()).thenReturn(0.3);
 
-        // When
-        LlmClient client = LlmClientFactory.createClient(config, aiConfig);
+        LlmClient client = factory.createClient(LlmProvider.OPENAI);
 
-        // Then
         assertNotNull(client);
         assertTrue(client instanceof OpenAiClient);
     }
 
     @Test
-    @DisplayName("Should create Azure OpenAI client when provider is AZURE")
-    void shouldCreateAzureClient() {
-        // Given
-        settings.setProperty("sonar.ai.enabled", true);
-        settings.setProperty("sonar.ai.provider", "AZURE");
-        settings.setProperty("sonar.ai.azure.api-key", "test-api-key");
-        settings.setProperty("sonar.ai.azure.endpoint", "https://test.openai.azure.com");
-        
-        Configuration config = settings.asConfig();
-        AiFixConfiguration aiConfig = new AiFixConfiguration(config);
+    void testCreateClient_AzureOpenAI() {
+        when(aiConfig.getProvider()).thenReturn(LlmProvider.AZURE_OPENAI);
+        when(configuration.get("sonar.ai.azure.api-key")).thenReturn(Optional.of("azure-key"));
+        when(configuration.get("sonar.ai.azure.endpoint")).thenReturn(Optional.of("https://test.openai.azure.com"));
+        when(configuration.get("sonar.ai.azure.deployment")).thenReturn(Optional.of("gpt-4-deployment"));
+        when(aiConfig.getModel()).thenReturn("gpt-4");
+        when(aiConfig.getMaxTokens()).thenReturn(2000);
 
-        // When
-        LlmClient client = LlmClientFactory.createClient(config, aiConfig);
+        LlmClient client = factory.createClient(LlmProvider.AZURE_OPENAI);
 
-        // Then
         assertNotNull(client);
         assertTrue(client instanceof AzureOpenAiClient);
     }
 
     @Test
-    @DisplayName("Should create local LLM client when provider is LOCAL")
-    void shouldCreateLocalClient() {
-        // Given
-        settings.setProperty("sonar.ai.enabled", true);
-        settings.setProperty("sonar.ai.provider", "LOCAL");
-        settings.setProperty("sonar.ai.local.base-url", "http://localhost:11434");
-        
-        Configuration config = settings.asConfig();
-        AiFixConfiguration aiConfig = new AiFixConfiguration(config);
+    void testCreateClient_Local() {
+        when(aiConfig.getProvider()).thenReturn(LlmProvider.LOCAL);
+        when(configuration.get("sonar.ai.local.endpoint")).thenReturn(Optional.of("http://localhost:11434"));
+        when(aiConfig.getModel()).thenReturn("llama2");
+        when(aiConfig.getMaxTokens()).thenReturn(2000);
 
-        // When
-        LlmClient client = LlmClientFactory.createClient(config, aiConfig);
+        LlmClient client = factory.createClient(LlmProvider.LOCAL);
 
-        // Then
         assertNotNull(client);
         assertTrue(client instanceof LocalLlmClient);
     }
 
     @Test
-    @DisplayName("Should default to OpenAI when provider not specified")
-    void shouldDefaultToOpenAI() {
-        // Given
-        settings.setProperty("sonar.ai.enabled", true);
-        // No provider set, should default to OPENAI
-        
-        Configuration config = settings.asConfig();
-        AiFixConfiguration aiConfig = new AiFixConfiguration(config);
+    void testGetClient_Cached() {
+        when(aiConfig.getProvider()).thenReturn(LlmProvider.OPENAI);
+        when(configuration.get("sonar.ai.openai.api-key")).thenReturn(Optional.of("sk-test-key"));
+        when(aiConfig.getModel()).thenReturn("gpt-4");
+        when(aiConfig.getMaxTokens()).thenReturn(2000);
+        when(aiConfig.getTemperature()).thenReturn(0.3);
 
-        // When
-        LlmClient client = LlmClientFactory.createClient(config, aiConfig);
+        LlmClient client1 = factory.getClient();
+        LlmClient client2 = factory.getClient();
 
-        // Then
-        assertNotNull(client);
-        assertTrue(client instanceof OpenAiClient);
+        assertSame(client1, client2);  // 应该返回同一个缓存实例
     }
 
     @Test
-    @DisplayName("Should throw exception for unknown provider")
-    void shouldThrowForUnknownProvider() {
-        // Given
-        settings.setProperty("sonar.ai.enabled", true);
-        settings.setProperty("sonar.ai.provider", "UNKNOWN_PROVIDER");
-        
-        Configuration config = settings.asConfig();
-        AiFixConfiguration aiConfig = new AiFixConfiguration(config);
+    void testGetDefaultClient() {
+        when(aiConfig.getProvider()).thenReturn(LlmProvider.OPENAI);
+        when(configuration.get("sonar.ai.openai.api-key")).thenReturn(Optional.of("sk-test-key"));
+        when(aiConfig.getModel()).thenReturn("gpt-4");
+        when(aiConfig.getMaxTokens()).thenReturn(2000);
+        when(aiConfig.getTemperature()).thenReturn(0.3);
 
-        // When/Then
-        assertThrows(LlmException.class, () -> {
-            LlmClientFactory.createClient(config, aiConfig);
+        LlmClient client = factory.getDefaultClient();
+
+        assertNotNull(client);
+    }
+
+    @Test
+    void testIsClientAvailable_WithApiKey() {
+        when(aiConfig.getProvider()).thenReturn(LlmProvider.OPENAI);
+        when(configuration.get("sonar.ai.openai.api-key")).thenReturn(Optional.of("sk-test-key"));
+        when(aiConfig.getModel()).thenReturn("gpt-4");
+        when(aiConfig.getMaxTokens()).thenReturn(2000);
+        when(aiConfig.getTemperature()).thenReturn(0.3);
+
+        LlmClient client = factory.getClient();
+
+        assertTrue(client.isAvailable());
+    }
+
+    @Test
+    void testIsClientAvailable_WithoutApiKey() {
+        when(aiConfig.getProvider()).thenReturn(LlmProvider.OPENAI);
+        when(configuration.get("sonar.ai.openai.api-key")).thenReturn(Optional.empty());
+        when(aiConfig.getModel()).thenReturn("gpt-4");
+        when(aiConfig.getMaxTokens()).thenReturn(2000);
+        when(aiConfig.getTemperature()).thenReturn(0.3);
+
+        LlmClient client = factory.getClient();
+
+        assertFalse(client.isAvailable());
+    }
+
+    @Test
+    void testCreateClient_NullProvider() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            factory.createClient(null);
         });
     }
 
     @Test
-    @DisplayName("Should return unavailable client when disabled")
-    void shouldReturnUnavailableClientWhenDisabled() {
-        // Given
-        settings.setProperty("sonar.ai.enabled", false);
-        
-        Configuration config = settings.asConfig();
-        AiFixConfiguration aiConfig = new AiFixConfiguration(config);
+    void testResetClient() {
+        when(aiConfig.getProvider()).thenReturn(LlmProvider.OPENAI);
+        when(configuration.get("sonar.ai.openai.api-key")).thenReturn(Optional.of("sk-test-key"));
+        when(aiConfig.getModel()).thenReturn("gpt-4");
+        when(aiConfig.getMaxTokens()).thenReturn(2000);
+        when(aiConfig.getTemperature()).thenReturn(0.3);
 
-        // When
-        LlmClient client = LlmClientFactory.createClient(config, aiConfig);
+        LlmClient client1 = factory.getClient();
+        factory.resetClient();
+        LlmClient client2 = factory.getClient();
 
-        // Then
-        assertNotNull(client);
-        assertFalse(client.isAvailable());
+        assertNotSame(client1, client2);  // 重置后应该是新实例
     }
 }
