@@ -1,0 +1,70 @@
+# SonarQube AI Fix Plugin 测试环境
+# 用于本地集成测试
+#
+# 使用方法:
+#   docker-compose -f docker-compose-test.yml up -d
+#   等待 SonarQube 启动后访问 http://localhost:9000
+#   默认账号: admin / admin
+
+version: "3.8"
+
+services:
+  # PostgreSQL 数据库
+  postgres:
+    image: postgres:15-alpine
+    container_name: sonar-ai-test-postgres
+    environment:
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: sonar
+      POSTGRES_DB: sonar
+    volumes:
+      - sonar_ai_test_postgres:/var/lib/postgresql/data
+    networks:
+      - sonar-ai-test-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sonar"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # SonarQube Community Edition (用于插件测试)
+  sonarqube:
+    image: sonarqube:community
+    container_name: sonar-ai-test-sonarqube
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://postgres:5432/sonar
+      SONAR_JDBC_USERNAME: sonar
+      SONAR_JDBC_PASSWORD: sonar
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+      SONAR_SEARCH_JAVAADDITIONALOPTS: "-Xms512m -Xmx512m"
+      SONAR_WEB_JAVAADDITIONALOPTS: "-Xms512m -Xmx512m"
+    volumes:
+      # 挂载插件目录（用于测试）
+      - sonar_ai_test_data:/opt/sonarqube/data
+      - sonar_ai_test_extensions:/opt/sonarqube/extensions
+      - sonar_ai_test_logs:/opt/sonarqube/logs
+      # 挂载本地构建的插件（可选）
+      # - ../target/sonar-ai-fix-plugin-1.0.0.jar:/opt/sonarqube/extensions/plugins/sonar-ai-fix-plugin-1.0.0.jar
+    ports:
+      - "9000:9000"
+    networks:
+      - sonar-ai-test-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/api/system/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+
+networks:
+  sonar-ai-test-network:
+    driver: bridge
+
+volumes:
+  sonar_ai_test_postgres:
+  sonar_ai_test_data:
+  sonar_ai_test_extensions:
+  sonar_ai_test_logs:

@@ -5,11 +5,13 @@
 package com.github.sonar.ai.ws;
 
 import com.github.sonar.ai.config.AiFixConfiguration;
+import com.github.sonar.ai.fix.FixApplier;
 import com.github.sonar.ai.fix.FixGenerator;
 import com.github.sonar.ai.fix.FixSuggestion;
 import com.github.sonar.ai.llm.LlmClient;
 import com.github.sonar.ai.llm.LlmClientFactory;
 import com.github.sonar.ai.cache.FixCache;
+import com.github.sonar.ai.lang.LanguageSupport;
 import org.sonar.api.config.Configuration;
 import org.sonar.api.server.ws.Request;
 import org.sonar.api.server.ws.RequestHandler;
@@ -34,6 +36,8 @@ public class AiFixRestService implements WebService {
     private final Configuration configuration;
     private final AiFixConfiguration aiConfig;
     private final FixCache fixCache;
+    private final FixApplier fixApplier;
+    private final LanguageSupport languageSupport;
 
     public AiFixRestService(Configuration configuration, 
                            AiFixConfiguration aiConfig,
@@ -41,6 +45,8 @@ public class AiFixRestService implements WebService {
         this.configuration = configuration;
         this.aiConfig = aiConfig;
         this.fixCache = fixCache;
+        this.fixApplier = new FixApplier();
+        this.languageSupport = new LanguageSupport();
     }
 
     @Override
@@ -82,11 +88,49 @@ public class AiFixRestService implements WebService {
         // 应用修复建议
         controller.createAction("apply")
             .setSince("1.0")
-            .setDescription("Apply AI fix suggestion")
+            .setDescription("Apply AI fix suggestion to file")
             .setPost(true)
             .setHandler(new ApplyFixHandler())
-            .createParam("suggestionId")
-                .setDescription("Suggestion ID")
+            .createParam("filePath")
+                .setDescription("Target file path")
+                .setRequired(true)
+            .createParam("originalCode")
+                .setDescription("Original code snippet")
+                .setRequired(true)
+            .createParam("fixedCode")
+                .setDescription("Fixed code from AI")
+                .setRequired(true);
+
+        // POST /api/ai-fix/rollback
+        // 回滚修复
+        controller.createAction("rollback")
+            .setSince("1.0")
+            .setDescription("Rollback an applied fix")
+            .setPost(true)
+            .setHandler(new RollbackFixHandler())
+            .createParam("fixId")
+                .setDescription("Applied fix ID to rollback")
+                .setRequired(true);
+
+        // GET /api/ai-fix/languages
+        // 获取支持的语言列表
+        controller.createAction("languages")
+            .setSince("1.0")
+            .setDescription("Get supported programming languages")
+            .setHandler(new GetLanguagesHandler());
+
+        // POST /api/ai-fix/preview
+        // 预览修复差异
+        controller.createAction("preview")
+            .setSince("1.0")
+            .setDescription("Preview fix diff before applying")
+            .setPost(true)
+            .setHandler(new PreviewFixHandler())
+            .createParam("originalCode")
+                .setDescription("Original code")
+                .setRequired(true)
+            .createParam("fixedCode")
+                .setDescription("Fixed code from AI")
                 .setRequired(true);
 
         // GET /api/ai-fix/cache/stats
@@ -198,14 +242,101 @@ public class AiFixRestService implements WebService {
     private class ApplyFixHandler implements RequestHandler {
         @Override
         public void handle(Request request, Response response) {
-            String suggestionId = request.mandatoryParam("suggestionId");
-            
-            // TODO: 实现应用修复逻辑
+            String filePath = request.mandatoryParam("filePath");
+            String originalCode = request.mandatoryParam("originalCode");
+            String fixedCode = request.mandatoryParam("fixedCode");
+
+            try {
+                FixApplier.ApplyResult result = fixApplier.applyFix(
+                    java.nio.file.Path.of(filePath),
+                    originalCode,
+                    fixedCode
+                );
+
+                Map<String, Object> response_data = new HashMap<>();
+                if (result.isSuccess()) {
+                    response_data.put("applied", true);
+                    response_data.put("fixId", result.getFixId());
+                    response_data.put("filePath", result.getFilePath());
+                    response_data.put("message", "Fix applied successfully");
+                } else {
+                    response_data.put("applied", false);
+                    response_data.put("error", result.getError());
+                }
+
+                response.stream().output(getJsonResponse(response_data));
+            } catch (Exception e) {
+                LOG.error("Error applying fix", e);
+                response.stream().output(getErrorResponse(e.getMessage()));
+            }
+        }
+    }
+
+    /**
+     * 回滚修复处理器
+     */
+    private class RollbackFixHandler implements RequestHandler {
+        @Override
+        public void handle(Request request, Response response) {
+            String fixId = request.mandatoryParam("fixId");
+
+            try {
+                FixApplier.ApplyResult result = fixApplier.rollbackFix(fixId);
+
+                Map<String, Object> response_data = new HashMap<>();
+                if (result.isSuccess()) {
+                    response_data.put("rolledBack", true);
+                    response_data.put("fixId", fixId);
+                    response_data.put("message", "Fix rolled back successfully");
+                } else {
+                    response_data.put("rolledBack", false);
+                    response_data.put("error", result.getError());
+                }
+
+                response.stream().output(getJsonResponse(response_data));
+            } catch (Exception e) {
+                LOG.error("Error rolling back fix", e);
+                response.stream().output(getErrorResponse(e.getMessage()));
+            }
+        }
+    }
+
+    /**
+     * 获取支持语言处理器
+     */
+    private class GetLanguagesHandler implements RequestHandler {
+        @Override
+        public void handle(Request request, Response response) {
             Map<String, Object> result = new HashMap<>();
-            result.put("applied", false);
-            result.put("message", "Apply fix feature coming soon");
+            result.put("languages", languageSupport.getSupportedLanguages());
+            result.put("count", languageSupport.getSupportedLanguages().size());
 
             response.stream().output(getJsonResponse(result));
+        }
+    }
+
+    /**
+     * 预览修复差异处理器
+     */
+    private class PreviewFixHandler implements RequestHandler {
+        @Override
+        public void handle(Request request, Response response) {
+            String originalCode = request.mandatoryParam("originalCode");
+            String fixedCode = request.mandatoryParam("fixedCode");
+
+            try {
+                FixApplier.DiffPreview preview = fixApplier.previewFix(originalCode, fixedCode);
+
+                Map<String, Object> result = new HashMap<>();
+                result.put("diff", preview.getDiff());
+                result.put("originalLines", preview.getOriginalLines());
+                result.put("fixedLines", preview.getFixedLines());
+
+                response.stream().output(getJsonResponse(result));
+            } catch (Exception e) {
+                LOG.error("Error previewing fix", e);
+                response.stream().output(getErrorResponse(e.getMessage()));
+            }
         }
     }
 
