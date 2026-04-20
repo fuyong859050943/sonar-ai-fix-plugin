@@ -1,0 +1,327 @@
+/**
+ * SonarQube AI Fix Plugin - Styles
+ */
+
+/* AI 修复容器 */
+.ai-fix-container {
+    margin: 16px 0;
+    padding: 16px;
+    background: #fff;
+    border: 1px solid #e6e6e6;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 头部 */
+.ai-fix-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e6e6e6;
+    margin-bottom: 16px;
+}
+
+.ai-fix-icon {
+    font-size: 24px;
+}
+
+.ai-fix-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    flex-grow: 1;
+}
+
+/* 严重级别标签 */
+.ai-fix-severity {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.severity-INFO {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.severity-MINOR {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+.severity-MAJOR {
+    background: #fce4ec;
+    color: #c2185b;
+}
+
+.severity-CRITICAL {
+    background: #ffebee;
+    color: #d32f2f;
+}
+
+.severity-BLOCKER {
+    background: #d32f2f;
+    color: #fff;
+}
+
+/* 说明区块 */
+.ai-fix-explanation,
+.ai-fix-steps {
+    margin-bottom: 16px;
+}
+
+.ai-fix-explanation h4,
+.ai-fix-steps h4,
+.ai-fix-code h4 {
+    margin: 0 0 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+}
+
+.ai-fix-explanation p {
+    margin: 0;
+    color: #666;
+    line-height: 1.6;
+}
+
+/* 步骤列表 */
+.ai-fix-steps ol {
+    margin: 0;
+    padding-left: 20px;
+    color: #666;
+}
+
+.ai-fix-steps li {
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+/* 代码区块 */
+.ai-fix-code {
+    margin-bottom: 16px;
+}
+
+.code-container {
+    position: relative;
+    background: #f5f5f5;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.code-container pre {
+    margin: 0;
+    padding: 16px;
+    overflow-x: auto;
+    font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.code-container code {
+    background: none;
+}
+
+.copy-button {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 4px 12px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.copy-button:hover {
+    background: #f0f0f0;
+}
+
+/* 操作按钮 */
+.ai-fix-actions {
+    display: flex;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px solid #e6e6e6;
+}
+
+.button {
+    padding: 8px 16px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #fff;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.button:hover {
+    background: #f5f5f5;
+}
+
+.button-primary {
+    background: #4b9fd5;
+    border-color: #4b9fd5;
+    color: #fff;
+}
+
+.button-primary:hover {
+    background: #3a8bc4;
+}
+
+.button-red {
+    background: #d32f2f;
+    border-color: #d32f2f;
+    color: #fff;
+}
+
+.button-link {
+    background: none;
+    border: none;
+    color: #4b9fd5;
+    text-decoration: underline;
+}
+
+.button-link:hover {
+    background: none;
+    color: #3a8bc4;
+}
+
+/* 页脚 */
+.ai-fix-footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e6e6e6;
+    font-size: 12px;
+    color: #999;
+}
+
+/* 加载状态 */
+.ai-fix-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 32px;
+    color: #666;
+}
+
+.spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e6e6e6;
+    border-top-color: #4b9fd5;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* 空状态 */
+.ai-fix-empty {
+    text-align: center;
+    padding: 24px;
+    color: #666;
+}
+
+.ai-fix-empty p {
+    margin-bottom: 16px;
+}
+
+/* 错误状态 */
+.ai-fix-error {
+    text-align: center;
+    padding: 24px;
+    color: #d32f2f;
+    background: #ffebee;
+    border-radius: 4px;
+}
+
+.ai-fix-error p {
+    margin-bottom: 16px;
+}
+
+/* 代码差异高亮 */
+.code-diff-added {
+    background: #e8f5e9;
+}
+
+.code-diff-removed {
+    background: #ffebee;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .ai-fix-container {
+        margin: 8px 0;
+        padding: 12px;
+    }
+
+    .ai-fix-header {
+        flex-wrap: wrap;
+    }
+
+    .ai-fix-actions {
+        flex-wrap: wrap;
+    }
+
+    .button {
+        width: 100%;
+        text-align: center;
+    }
+}
+
+/* 暗色主题支持 */
+@media (prefers-color-scheme: dark) {
+    .ai-fix-container {
+        background: #1e1e1e;
+        border-color: #333;
+    }
+
+    .ai-fix-header {
+        border-color: #333;
+    }
+
+    .ai-fix-explanation h4,
+    .ai-fix-steps h4,
+    .ai-fix-code h4 {
+        color: #e0e0e0;
+    }
+
+    .ai-fix-explanation p,
+    .ai-fix-steps ol {
+        color: #b0b0b0;
+    }
+
+    .code-container {
+        background: #2d2d2d;
+    }
+
+    .copy-button {
+        background: #333;
+        border-color: #444;
+        color: #e0e0e0;
+    }
+
+    .button {
+        background: #333;
+        border-color: #444;
+        color: #e0e0e0;
+    }
+
+    .button:hover {
+        background: #444;
+    }
+}
